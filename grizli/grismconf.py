@@ -1285,7 +1285,7 @@ class TransformGrismconf(object):
             Grism order, translated from +1, 0, +2, +3, -1 = A, B, C, D, E
 
         fwcpos : float
-            NIRISS rotation *(not implemented)*
+            NIRISS rotation angle in degrees, used to compute trace offsets for NIRISS GR150R/C
 
         Returns
         -------
@@ -1324,6 +1324,25 @@ class TransformGrismconf(object):
         t = t_func(self.order_names[beam], *x0, delta)
         tdx = self.conf.DISPX(self.order_names[beam], *x0, t)
         tdy = self.conf.DISPY(self.order_names[beam], *x0, t)
+
+        if fwcpos is not None:
+            from astropy.modeling.models import Rotation2D
+
+            # THERE IS A CHANCE THIS SHOULD NOT HAVE A MINUS!!!
+            theta = -(fwcpos - self.conf.fwcpos_ref)   
+
+            if theta != 0.0:
+                # Pivot is always the +1 order (beam "A") trace at 1.05 µm,
+                # regardless of which beam is being evaluated.
+                order_A = self.order_names["A"]
+                t_piv   = self.conf.INVDISPL(order_A, *x0, 1.05e4) #wavelengths in Å in grizli
+                tdx_piv = self.conf.DISPX(order_A, *x0, t_piv)
+                tdy_piv = self.conf.DISPY(order_A, *x0, t_piv)
+
+                rotate = Rotation2D(theta)
+                ddx, ddy = rotate(tdx - tdx_piv, tdy - tdy_piv)
+                tdx = tdx_piv + ddx
+                tdy = tdy_piv + ddy
 
         rev = self.transform.forward(x0[0] + tdx, x0[1] + tdy)
         trace_dy = rev[1, :] - y
