@@ -1335,9 +1335,10 @@ class TransformGrismconf(object):
                 # Pivot is always the +1 order (beam "A") trace at 1.05 µm,
                 # regardless of which beam is being evaluated.
                 order_A = self.order_names["A"]
-                t_piv   = self.conf.INVDISPL(order_A, *x0, 1.05e4) #wavelengths in Å in grizli
+                t_piv   = self.conf.INVDISPL(order_A, *x0, self.conf.pivot_wavelength) 
                 tdx_piv = self.conf.DISPX(order_A, *x0, t_piv)
                 tdy_piv = self.conf.DISPY(order_A, *x0, t_piv)
+                print(f"ROTATION APPLIED: theta = {theta:.2f}")
 
                 rotate = Rotation2D(theta)
                 ddx, ddy = rotate(tdx - tdx_piv, tdy - tdy_piv)
@@ -1858,6 +1859,8 @@ class CRDSGrismConf:
             dm = jwst.datamodels.NIRCAMGrismModel(full_path)
         else:
             dm = jwst.datamodels.NIRISSGrismModel(full_path)
+            print("Initialized NIRISSGrismModel")
+            self.pivot_wavelength = getattr(dm, 'pivot_wavelength', 1.05) # pivot is 1.05 um for GR150C/R
 
         self.meta = copy.deepcopy(dm.meta.instance)
         self.dm_orders = copy.deepcopy(dm.orders)
@@ -1865,6 +1868,7 @@ class CRDSGrismConf:
         self.dispx = copy.deepcopy(dm.dispx)
         self.dispy = copy.deepcopy(dm.dispy)
         self.displ = copy.deepcopy(dm.displ)
+        self.fwcpos_ref = getattr(dm, 'fwcpos_ref', None)
 
     # @property
     # def meta(self):
